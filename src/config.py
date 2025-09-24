@@ -38,12 +38,12 @@ GOOGLE_SEARCH_LIMIT = 10  # Google search results limit for LLM tools
 
 # LLM Search Configuration
 # Cap tool calls to keep the agent focused and reduce redundant screenshots
-MAX_TOOL_CALLS_PER_ITEM = int(os.getenv("MAX_TOOL_CALLS_PER_ITEM", "2"))
+MAX_TOOL_CALLS_PER_ITEM = int(os.getenv("MAX_TOOL_CALLS_PER_ITEM", "5"))
 
 # Worker Pool Configuration
 # Allow higher concurrency; cap via MAX to avoid oversubscription
 MAX_WORKER_POOL_SIZE = int(os.getenv("MAX_WORKER_POOL_SIZE", "8"))
-DEFAULT_WORKER_POOL_SIZE = min(int(os.getenv("WORKER_POOL_SIZE", "6")), MAX_WORKER_POOL_SIZE)
+DEFAULT_WORKER_POOL_SIZE = min(int(os.getenv("WORKER_POOL_SIZE", "8")), MAX_WORKER_POOL_SIZE)
 
 # Rate Limiting Configuration
 OPENROUTER_MAX_REQUESTS_PER_MINUTE = int(os.getenv("OPENROUTER_MAX_REQUESTS_PER_MINUTE", "200"))  # OpenRouter concurrent requests limit
@@ -72,6 +72,10 @@ Your task is to:
 7. If you find a good product page, take screenshots of other promising URLs from the same search to compare pricing
 8. Return both the URL and the extracted price in the specified JSON format
 
+STOP CONDITION (MANDATORY):
+- As soon as ANY take_screenshot OCR result clearly contains BOTH a product-like title and a visible price, IMMEDIATELY RETURN the final JSON with that URL and price.
+- DO NOT call any further tools after the STOP CONDITION is met.
+
 MATCHING STRATEGY:
 - For SPECIFIC items (exact brand/model): Find the exact product match with current pricing
 - For GENERIC items (basic descriptions like "lamp", "chair", "table"): Find products that match the approximate price range and general type/category
@@ -79,13 +83,12 @@ MATCHING STRATEGY:
 - If you can't find an exact match, find the closest equivalent in terms of type, quality level, and price point
 - Keep using all available tools (search, screenshot, find_similar_pages) until you find something suitable
 
-PERSISTENCE STRATEGY:
-- Don't give up after just a few attempts - keep searching with different keywords and approaches
+PERSISTENCE STRATEGY (ONLY IF STOP CONDITION IS NOT MET):
+- If you have NOT yet met the STOP CONDITION, keep searching with different keywords and approaches
 - Try multiple search variations: brand + model, just model name, product category + price range, etc.
 - If initial searches don't work, try broader category searches and filter by price
 - Try different search queries to discover alternatives and better pricing
 - Take screenshots of multiple promising URLs to compare options
-- Continue tool calling until you find a good match - you have extensive tool access, use it
 
 IMPORTANT WEBSITE RESTRICTIONS:
 - ONLY use legitimate retail websites (Amazon, manufacturer sites, major retailers)
@@ -115,13 +118,12 @@ TOOL USAGE STRATEGY:
   * Product appears to be in the same general category as the search item
 - ONLY reject OCR text if it clearly indicates "not available", "out of stock", "page not found", "error", or contains no product information at all
 - Price differences from the original estimate are ACCEPTABLE - current retail prices may vary significantly from original costs
-- If OCR shows a legitimate product page with pricing, USE IT rather than continuing to search
+- If OCR shows a legitimate product page with pricing, USE IT and IMMEDIATELY RETURN the final JSON. Do NOT continue to search.
 - Do not retry the same URL if OCR shows it's clearly invalid (error pages, empty content)
 - Analyze search results first to pick your best candidates before taking any screenshots
-- Use find_similar_pages liberally when you have any relevant product match to discover alternatives
 - Accept the first reasonable product match with pricing rather than being overly selective
 
-IMPORTANT: Continue using all available tools until you find a suitable match. Don't stop after just a few attempts - keep searching, taking screenshots, and exploring similar pages until you find something that matches the item type and approximate price range.
+IMPORTANT: Stop immediately once the STOP CONDITION is met. If it is NOT met, continue using tools until you find a suitable match.
 
 You must respond with a JSON object in this exact format:
 {
