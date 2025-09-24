@@ -11,6 +11,9 @@ FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
 FIREWORKS_BASE_URL = os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1")
 FIREWORKS_VL_MODEL = os.getenv("FIREWORKS_VL_MODEL", "accounts/fireworks/models/qwen2p5-vl-32b-instruct")
 
+# Fireworks AI (Text LLM)
+FIREWORKS_TEXT_MODEL = os.getenv("FIREWORKS_TEXT_MODEL", "accounts/fireworks/models/qwen3-235b-a22b-instruct-2507")
+
 # Proxy Configuration
 OXYLABS_PROXY = os.getenv("OXYLABS_PROXY")  # Expected format: "username:password"
 OXYLABS_PROXY_SERVER = "pr.oxylabs.io:7777"
@@ -25,9 +28,9 @@ else:
     OXYLABS_WEB_API_USERNAME = None
     OXYLABS_WEB_API_PASSWORD = None
 
-# OpenRouter Configuration
+# OpenRouter Configuration (legacy; replaced by Fireworks but kept to avoid wide refactor)
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "google/gemini-2.5-flash:nitro"  
+DEFAULT_MODEL = FIREWORKS_TEXT_MODEL  
 TEMPERATURE = 0.7  # Controls randomness in LLM responses (0.0 = deterministic, 1.0 = creative)
 
 # Search Configuration  
