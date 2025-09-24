@@ -40,6 +40,12 @@ class ProductScreenshotter:
         
         proxy_status = "with proxy" if self.use_oxylabs_proxy else "direct"
         logger.info(f"🎭 Screenshot service ready ({proxy_status})")
+        
+        # Rotate Oxylabs proxy/context after N pages within the same domain to balance caching and rotation
+        try:
+            self.rotate_after_pages = int(os.getenv("OXYLABS_ROTATE_AFTER_PAGES", "25"))
+        except Exception:
+            self.rotate_after_pages = 25
     
     def _extract_ocr_fast(self, image_path: str, item_number: int) -> str:
         """Fast OCR extraction using simplified approach to avoid timeouts."""
@@ -590,6 +596,63 @@ class ProductScreenshotter:
         """Alias for capture_product_page - already creates fresh connections."""
         return await self.capture_product_page(url, item_number)
     
+    async def capture_product_page_on_existing_page(self, page: Page, url: str, item_number: int) -> Dict[str, str]:
+        """Capture a product page using an existing page/context (for domain reuse)."""
+        try:
+            logger.info(f"Capturing product page on existing context for item {item_number}: {url}")
+            
+            # Navigate efficiently
+            await asyncio.wait_for(
+                page.goto(url, wait_until="domcontentloaded", timeout=SCREENSHOT_TIMEOUT),
+                timeout=SCREENSHOT_TIMEOUT / 1000.0
+            )
+            
+            # Wait for essential load
+            await asyncio.wait_for(self._wait_for_page_fully_loaded(page), timeout=30.0)
+            
+            # Handle overlays
+            await asyncio.wait_for(self._handle_page_overlays(page), timeout=15.0)
+            
+            # Move mouse outside viewport to avoid hover effects
+            await page.mouse.move(-10, -10)
+            await self._human_like_delay(0.2, 0.5)
+            
+            # Take screenshot
+            screenshot_path = self.screenshots_dir / f"item_{item_number}.png"
+            await asyncio.wait_for(self._capture_product_area_screenshot(page, screenshot_path), timeout=30.0)
+            jpeg_path = screenshot_path.with_suffix('.jpg')
+            
+            # OCR in executor
+            loop = asyncio.get_event_loop()
+            ocr_text = await asyncio.wait_for(
+                loop.run_in_executor(
+                    self.ocr_executor,
+                    self._extract_ocr_fast,
+                    str(jpeg_path),
+                    item_number
+                ),
+                timeout=60.0
+            )
+            
+            return {
+                'screenshot_path': str(jpeg_path),
+                'ocr_text': ocr_text
+            }
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout capturing product page for item {item_number} at {url}: Operation timed out")
+            return {
+                'screenshot_path': '',
+                'ocr_text': '',
+                'error': 'Screenshot operation timed out'
+            }
+        except Exception as e:
+            logger.error(f"Error capturing product page for item {item_number} at {url}: {e}")
+            return {
+                'screenshot_path': '',
+                'ocr_text': '',
+                'error': str(e)
+            }
+
     async def process_urls_by_domain(self, url_mapping: Dict[int, str]) -> Dict[int, Dict[str, str]]:
         """Process URLs using domain-based async queues for better stealth."""
         results = {}
@@ -651,39 +714,90 @@ class ProductScreenshotter:
         return results
     
     async def _process_domain_queue(self, domain: str, urls: List[Tuple[int, str]]) -> Dict[int, Dict[str, str]]:
-        """Process all URLs for a specific domain - NO DELAYS with Oxylabs proxy rotation."""
-        results = {}
-        
-        logger.info(f"Processing {domain} with {len(urls)} URLs - NO DELAYS, fresh Oxylabs IP per request")
-        
-        # Process in parallel - each creates fresh connection for IP rotation
-        async def process_single_url(item_number: int, url: str) -> tuple[int, Dict[str, str]]:
+        """Process all URLs for a specific domain reusing one context, rotating after N pages."""
+        results: Dict[int, Dict[str, str]] = {}
+        logger.info(f"Processing {domain} with {len(urls)} URLs - reuse context, rotate after {self.rotate_after_pages} pages")
+
+        context: Optional[BrowserContext] = None
+        page: Optional[Page] = None
+        pages_since_rotation: int = 0
+
+        async def create_context_and_page() -> tuple[Optional[BrowserContext], Optional[Page]]:
             try:
-                logger.info(f"Processing item {item_number} with fresh Oxylabs connection")
-                data = await self.capture_product_page(url, item_number)
-                return item_number, data
+                ctx = await asyncio.wait_for(self._create_stealth_context(urls[0][1]), timeout=30.0)
+                pg = await ctx.new_page()
+                return ctx, pg
             except Exception as e:
-                logger.error(f"Failed to process URL for item {item_number}: {e}")
-                return item_number, {
-                    'screenshot_path': '',
-                    'ocr_text': '',
-                    'error': str(e)
-                }
-        
-        # Process all URLs in parallel - each gets fresh Oxylabs IP
-        tasks = [process_single_url(item_number, url) for item_number, url in urls]
-        completed_results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Collect results
-        for result in completed_results:
-            if isinstance(result, Exception):
-                logger.error(f"Task failed: {result}")
-            else:
-                item_number, data = result
+                logger.error(f"Failed to create context/page for domain {domain}: {e}")
+                return None, None
+
+        try:
+            context, page = await create_context_and_page()
+            if not context or not page:
+                # Fall back: process with fresh connections per URL
+                logger.warning(f"Falling back to fresh connection per URL for {domain}")
+                for item_number, url in urls:
+                    try:
+                        data = await self.capture_product_page(url, item_number)
+                        results[item_number] = data
+                    except Exception as e:
+                        logger.error(f"Failed to process URL for item {item_number}: {e}")
+                        results[item_number] = {
+                            'screenshot_path': '',
+                            'ocr_text': '',
+                            'error': str(e)
+                        }
+                return results
+
+            for item_number, url in urls:
+                # Rotate after threshold
+                if pages_since_rotation >= self.rotate_after_pages:
+                    try:
+                        if page:
+                            await page.close()
+                        if context:
+                            await context.close()
+                    except Exception:
+                        pass
+                    context, page = await create_context_and_page()
+                    pages_since_rotation = 0
+                    if not context or not page:
+                        logger.warning(f"Rotation recreate failed for {domain}; using fresh connection for this URL")
+                        data = await self.capture_product_page(url, item_number)
+                        results[item_number] = data
+                        continue
+
+                # Capture on existing page; on failure, recreate once and retry
+                data = await self.capture_product_page_on_existing_page(page, url, item_number)
+                if data.get('error'):
+                    logger.debug(f"Retrying {url} on fresh context due to error: {data['error']}")
+                    try:
+                        if page:
+                            await page.close()
+                        if context:
+                            await context.close()
+                    except Exception:
+                        pass
+                    context, page = await create_context_and_page()
+                    pages_since_rotation = 0
+                    if context and page:
+                        data = await self.capture_product_page_on_existing_page(page, url, item_number)
+                    else:
+                        data = await self.capture_product_page(url, item_number)
+
                 results[item_number] = data
-        
-        logger.info(f"Completed processing {domain}: {len(results)} results with fresh IPs")
-        return results
+                pages_since_rotation += 1
+
+            return results
+
+        finally:
+            try:
+                if page:
+                    await page.close()
+                if context:
+                    await context.close()
+            except Exception:
+                pass
 
     async def process_urls(self, url_mapping: Dict[int, str]) -> Dict[int, Dict[str, str]]:
         """Process multiple URLs using domain-based queues (default method)."""
