@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Product Price Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px 5px;
+        }
+
+        .container {
+            width: 98%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 80vh; /* Prevent container from jumping */
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-area {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 3px dashed #4f46e5;
+            border-radius: 10px;
+            padding: 60px 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+
+        .drop-zone.dragover {
+            border-color: #7c3aed;
+            background: #f1f5f9;
+            transform: scale(1.02);
+        }
+
+        .drop-zone h3 {
+            color: #4f46e5;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .drop-zone p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.875rem;
+        }
+
+        .controls {
+            padding: 20px 40px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            min-height: 140px; /* Reserved space to prevent jumping */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .controls.visible {
+            opacity: 1;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4f46e5;
+        }
+
+        .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+
+        .table-container {
+            padding: 20px 40px;
+            overflow-x: auto;
+            min-height: 200px; /* Reserved space to prevent jumping */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .table-container.visible {
+            opacity: 1;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .table {
+            width: 100%;
+            min-width: 1200px;
+            border-collapse: collapse;
+            background: white;
+            table-layout: fixed; /* Prevent column width changes */
+        }
+
+        .table th {
+            background: #4f46e5;
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        /* Fixed column widths for stable layout */
+        .table th:nth-child(1) { width: 70px; }   /* Item # */
+        .table th:nth-child(2) { width: 80px; }   /* Room */
+        .table th:nth-child(3) { width: 80px; }   /* Make */
+        .table th:nth-child(4) { width: 80px; }   /* Model */
+        .table th:nth-child(5) { width: 150px; }  /* Description */
+        .table th:nth-child(6) { width: 80px; }   /* Vendor */
+        .table th:nth-child(7) { width: 60px; }   /* Qty Lost */
+        .table th:nth-child(8) { width: 70px; }   /* Age */
+        .table th:nth-child(9) { width: 80px; }   /* Condition */
+        .table th:nth-child(10) { width: 80px; }  /* Cost Each */
+        .table th:nth-child(11) { width: 80px; }  /* Total Cost */
+        .table th:nth-child(12) { width: 70px; }  /* Price */
+        .table th:nth-child(13) { width: 120px; } /* Matched URL */
+        .table th:nth-child(14) { width: 80px; }  /* LLM Price */
+        .table th:nth-child(15) { width: 80px; }  /* Fallback Price */
+        .table th:nth-child(16) { width: 120px; } /* Title */
+        .table th:nth-child(17) { width: 120px; } /* Screenshot */
+        .table th:nth-child(18) { width: 100px; } /* Actions */
+
+        .table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .table tr:hover {
+            background: #f8fafc;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-processing {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+
+        .status-complete {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .status-error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .url-link {
+            color: #4f46e5;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .url-link:hover {
+            text-decoration: underline;
+        }
+
+        .screenshot-cell {
+            text-align: center;
+            width: 120px; /* Fixed width for stable layout */
+            padding: 8px !important;
+        }
+
+        .screenshot-container {
+            width: 100px;
+            height: 80px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screenshot-img {
+            max-width: 100px;
+            max-height: 80px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            display: block;
+        }
+
+        .screenshot-img:hover {
+            transform: scale(2.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 100;
+            border: 2px solid #4f46e5;
+        }
+
+        .screenshot-skeleton {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .no-image-placeholder {
+            color: #9ca3af;
+            font-size: 0.75rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            margin: 5% auto;
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .modal-content img {
+            width: 100%;
+            height: auto;
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: white;
+        }
+
+        /* Fixed Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+
+        .toast {
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateX(100%);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .toast.visible {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            opacity: 0.6;
+            margin-left: auto;
+        }
+
+        .toast-close:hover {
+            opacity: 1;
+        }
+
+        /* Responsive Design */
+                 @media (max-width: 1200px) {
+             .container {
+                 width: 99%;
+                 margin: 5px auto;
+                 border-radius: 10px;
+             }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .table-container {
+                padding: 10px 20px;
+            }
+            
+            .controls {
+                padding: 15px 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 5px 2px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
+            .upload-area {
+                padding: 20px;
+            }
+            
+            .drop-zone {
+                padding: 40px 15px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stat-card {
+                min-width: auto;
+                text-align: center;
+            }
+            
+            .btn {
+                margin: 5px 2px;
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .table-container {
+                padding: 10px;
+            }
+            
+            .controls {
+                padding: 15px;
+                min-height: 120px; /* Adjust for mobile */
+            }
+            
+            .toast-container {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+            
+            .toast {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .table {
+                min-width: 1000px;
+                font-size: 0.8rem;
+            }
+            
+            .table th,
+            .table td {
+                padding: 8px 6px;
+            }
+            
+            .btn-small {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .drop-zone {
+                padding: 30px 10px;
+            }
+            
+            .drop-zone h3 {
+                font-size: 1.2rem;
+            }
+            
+            .drop-zone p {
+                font-size: 1rem;
+            }
+            
+            .btn {
+                display: block;
+                margin: 8px auto;
+                width: 90%;
+                max-width: 200px;
+            }
+            
+            .stats {
+                gap: 8px;
+            }
+            
+            .stat-card {
+                padding: 10px 15px;
+            }
+            
+            .stat-number {
+                font-size: 1.5rem;
+            }
+            
+            .table {
+                min-width: 900px;
+                font-size: 0.75rem;
+            }
+            
+            .table th,
+            .table td {
+                padding: 6px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AI Product Price Checker</h1>
+            <p>Upload your Excel file to find product URLs, extract prices, and capture screenshots</p>
+        </div>
+
+        <div class="upload-area">
+            <div class="drop-zone" id="dropZone">
+                <h3>📁 Drop your Excel file here</h3>
+                <p>Or click to browse and select a file</p>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls,.xlsm">
+        </div>
+
+        <!-- Toast Notification Container -->
+        <div class="toast-container" id="toastContainer">
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalItems">0</div>
+                    <div class="stat-label">Total Items</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="processedUrls">0</div>
+                    <div class="stat-label">URLs Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="processedScreenshots">0</div>
+                    <div class="stat-label">Screenshots</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="btn" id="findAllBtn" onclick="processAll()">
+                    <span id="findAllText">🚀 Find All</span>
+                    <span id="findAllLoading" class="loading" style="display: none;"></span>
+                </button>
+                <button class="btn btn-success" id="refreshBtn" onclick="refreshData()" disabled>
+                    🔄 Refresh
+                </button>
+                <button class="btn btn-warning" id="downloadPdfBtn" onclick="downloadPdf()" disabled>
+                    📄 Download Images PDF
+                </button>
+                <button class="btn btn-warning" id="downloadExcelBtn" onclick="downloadExcel()" disabled>
+                    📊 Download Excel
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container" id="tableContainer">
+            <div class="table-wrapper">
+                <table class="table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Item #</th>
+                            <th>Room</th>
+                            <th>Make</th>
+                            <th>Model</th>
+                            <th>Description</th>
+                            <th>Vendor</th>
+                            <th>Qty Lost</th>
+                            <th>Age (Months)</th>
+                            <th>Condition</th>
+                            <th>Cost Each</th>
+                            <th>Total Cost</th>
+                            <th>Price</th>
+                            <th>Matched URL</th>
+                            <th>LLM Price</th>
+                            <th>Fallback Price</th>
+                            <th>Title</th>
+                            <th>Screenshot</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for screenshot viewing -->
+    <div id="screenshotModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="Screenshot">
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let currentData = [];
+        let refreshInterval = null;
+
+        // File upload handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', handleDragOver);
+        dropZone.addEventListener('dragleave', handleDragLeave);
+        dropZone.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        async function uploadFile(file) {
+            if (!file.name.match(/\.(xlsx|xls|xlsm)$/i)) {
+                showAlert('Please select an Excel file (.xlsx, .xls, or .xlsm)', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showAlert('Uploading and parsing file...', 'info');
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                sessionId = data.session_id;
+                currentData = data.items;
+
+                showAlert(`Successfully loaded ${data.total_items} items from ${data.filename}`, 'success');
+                
+                document.getElementById('controls').classList.add('visible');
+                document.getElementById('tableContainer').classList.add('visible');
+                
+                updateTable();
+                updateStats();
+                
+                // Enable refresh button
+                document.getElementById('refreshBtn').disabled = false;
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showAlert(`Upload failed: ${error.message}`, 'error');
+            }
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            currentData.forEach(item => {
+                const row = document.createElement('tr');
+                
+                // Screenshot cell with stable container
+                let screenshotHtml = '';
+                if (item.screenshot_path) {
+                    screenshotHtml = `
+                        <div class="screenshot-container">
+                            <img src="/screenshots/${item.screenshot_path.split('/').pop()}" 
+                                 alt="Screenshot" class="screenshot-img" 
+                                 onclick="showScreenshot('/screenshots/${item.screenshot_path.split('/').pop()}')"
+                                 loading="lazy">
+                        </div>`;
+                } else if (item.is_processing) {
+                    screenshotHtml = `
+                        <div class="screenshot-container">
+                            <div class="screenshot-skeleton"></div>
+                        </div>`;
+                } else {
+                    screenshotHtml = `
+                        <div class="screenshot-container">
+                            <div class="no-image-placeholder">No image</div>
+                        </div>`;
+                }
+
+                // URL cell
+                let urlHtml = '';
+                if (item.matched_url && item.matched_url !== 'NOT_FOUND' && item.matched_url !== 'ERROR') {
+                    urlHtml = `<a href="${item.matched_url}" target="_blank" class="url-link">
+                                ${item.matched_url.length > 50 ? item.matched_url.substring(0, 50) + '...' : item.matched_url}
+                               </a>`;
+                } else if (item.matched_url === 'NOT_FOUND') {
+                    urlHtml = '<span style="color: #64748b;">Not found</span>';
+                } else if (item.matched_url === 'ERROR') {
+                    urlHtml = '<span style="color: #ef4444;">Error</span>';
+                } else {
+                    urlHtml = '<span style="color: #64748b;">-</span>';
+                }
+
+                row.innerHTML = `
+                    <td><strong>${item.item_number}</strong></td>
+                    <td>${item.room || '-'}</td>
+                    <td>${item.make || '-'}</td>
+                    <td>${item.model || '-'}</td>
+                    <td title="${item.description}">${item.description.length > 40 ? item.description.substring(0, 40) + '...' : item.description}</td>
+                    <td>${item.original_vendor || '-'}</td>
+                    <td>${item.quantity_lost || '1'}</td>
+                    <td>${item.item_age_months || '-'}</td>
+                    <td>${item.condition || '-'}</td>
+                    <td>$${item.cost_to_replace_each ? item.cost_to_replace_each.toFixed(2) : '0.00'}</td>
+                    <td>$${item.total_cost ? item.total_cost.toFixed(2) : '0.00'}</td>
+                    <td>$${item.price || '0.00'}</td>
+                    <td>${urlHtml}</td>
+                    <td>${item.llm_extracted_price || '-'}</td>
+                    <td>${item.fallback_extracted_price || '-'}</td>
+                    <td title="${item.extracted_title}">${item.extracted_title ? (item.extracted_title.length > 30 ? item.extracted_title.substring(0, 30) + '...' : item.extracted_title) : '-'}</td>
+                    <td class="screenshot-cell">${screenshotHtml}</td>
+                    <td>
+                        <button class="btn btn-small" onclick="processItem(${item.item_number})" 
+                                id="btn-${item.item_number}">
+                            <span id="text-${item.item_number}">🔍 Find Item</span>
+                            <span id="loading-${item.item_number}" class="loading" style="display: none;"></span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('totalItems').textContent = currentData.length;
+            
+            const processedUrls = currentData.filter(item => 
+                item.matched_url && item.matched_url !== 'NOT_FOUND' && item.matched_url !== 'ERROR'
+            ).length;
+            document.getElementById('processedUrls').textContent = processedUrls;
+            
+            const processedScreenshots = currentData.filter(item => item.screenshot_path).length;
+            document.getElementById('processedScreenshots').textContent = processedScreenshots;
+
+            // Enable download buttons if we have data
+            document.getElementById('downloadPdfBtn').disabled = processedScreenshots === 0;
+            document.getElementById('downloadExcelBtn').disabled = processedUrls === 0;
+        }
+
+        async function processAll() {
+            if (!sessionId) return;
+
+            const button = document.getElementById('findAllBtn');
+            const text = document.getElementById('findAllText');
+            const loading = document.getElementById('findAllLoading');
+            
+            button.disabled = true;
+            text.style.display = 'none';
+            loading.style.display = 'inline-block';
+
+            try {
+                const response = await fetch(`/process_all/${sessionId}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Processing failed: ${response.statusText}`);
+                }
+
+                showAlert('Processing started! The page will refresh automatically as items are processed.', 'info');
+                
+                // Start polling for updates
+                startPolling();
+
+            } catch (error) {
+                console.error('Processing error:', error);
+                showAlert(`Processing failed: ${error.message}`, 'error');
+                
+                button.disabled = false;
+                text.style.display = 'inline-block';
+                loading.style.display = 'none';
+            }
+        }
+
+        async function processItem(itemNumber) {
+            if (!sessionId) return;
+
+            const button = document.getElementById(`btn-${itemNumber}`);
+            const text = document.getElementById(`text-${itemNumber}`);
+            const loading = document.getElementById(`loading-${itemNumber}`);
+            
+            button.disabled = true;
+            text.style.display = 'none';
+            loading.style.display = 'inline-block';
+
+            try {
+                const response = await fetch(`/process_item/${sessionId}/${itemNumber}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Processing failed: ${response.statusText}`);
+                }
+
+                showAlert(`Processing item ${itemNumber}...`, 'info');
+                
+                // Start polling for updates
+                startPolling();
+
+            } catch (error) {
+                console.error('Processing error:', error);
+                showAlert(`Processing item ${itemNumber} failed: ${error.message}`, 'error');
+                
+                button.disabled = false;
+                text.style.display = 'inline-block';
+                loading.style.display = 'none';
+            }
+        }
+
+        function startPolling() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            refreshInterval = setInterval(refreshData, 3000); // Poll every 3 seconds
+        }
+
+        function stopPolling() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        async function refreshData() {
+            if (!sessionId) return;
+
+            try {
+                const response = await fetch(`/status/${sessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Status check failed: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                currentData = data.items;
+                
+                updateTable();
+                updateStats();
+
+                // Re-enable buttons only for items that are not processing
+                currentData.forEach(item => {
+                    const itemNumber = item.item_number;
+                    const btn = document.getElementById(`btn-${itemNumber}`);
+                    const text = document.getElementById(`text-${itemNumber}`);
+                    const loading = document.getElementById(`loading-${itemNumber}`);
+                    
+                    if (btn && text && loading) {
+                        if (item.is_processing) {
+                            // Keep button disabled and showing spinner while processing
+                            btn.disabled = true;
+                            text.style.display = 'none';
+                            loading.style.display = 'inline-block';
+                        } else {
+                            // Re-enable button when processing is complete
+                            btn.disabled = false;
+                            text.style.display = 'inline-block';
+                            loading.style.display = 'none';
+                        }
+                    }
+                });
+
+                // Check if any items are still processing
+                const stillProcessing = currentData.some(item => item.is_processing);
+                
+                // Re-enable find all button
+                const findAllBtn = document.getElementById('findAllBtn');
+                const findAllText = document.getElementById('findAllText');
+                const findAllLoading = document.getElementById('findAllLoading');
+                
+                if (!stillProcessing) {
+                    findAllBtn.disabled = false;
+                    findAllText.style.display = 'inline-block';
+                    findAllLoading.style.display = 'none';
+                    
+                    // Stop polling if nothing is processing
+                    stopPolling();
+                }
+
+            } catch (error) {
+                console.error('Refresh error:', error);
+            }
+        }
+
+        async function downloadPdf() {
+            if (!sessionId) return;
+            
+            try {
+                const response = await fetch(`/download_pdf/${sessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`PDF download failed: ${response.statusText}`);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `screenshots_${sessionId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showAlert('PDF downloaded successfully!', 'success');
+
+            } catch (error) {
+                console.error('PDF download error:', error);
+                showAlert(`PDF download failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadExcel() {
+            if (!sessionId) return;
+            
+            try {
+                const response = await fetch(`/download_excel/${sessionId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Excel download failed: ${response.statusText}`);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `results_${sessionId}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showAlert('Excel file downloaded successfully!', 'success');
+
+            } catch (error) {
+                console.error('Excel download error:', error);
+                showAlert(`Excel download failed: ${error.message}`, 'error');
+            }
+        }
+
+        function showScreenshot(src) {
+            document.getElementById('modalImage').src = src;
+            document.getElementById('screenshotModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('screenshotModal').style.display = 'none';
+        }
+
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toastId = 'toast-' + Date.now();
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button class="toast-close" onclick="closeToast('${toastId}')">&times;</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.add('visible');
+            }, 10);
+            
+            // Auto-hide
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeToast(toastId);
+                }, duration);
+            }
+            
+            return toastId;
+        }
+
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.remove('visible');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+
+        // Backwards compatibility alias
+        function showAlert(message, type) {
+            showToast(message, type);
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('screenshotModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopPolling();
+        });
+    </script>
+</body>
+</html> 

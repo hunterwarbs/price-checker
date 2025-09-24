@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Local configuration & secrets
+.env*
+price_checker.log
+
+# Runtime artifacts
+screenshots/
+uploads/
+data/
+
+# Tools
+.pytest_cache/
+.coverage
+htmlcov/
+.cache
+
+# OS
+.DS_Store

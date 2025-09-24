@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  price-checker:
+    build: .
+    container_name: price-checker-app
+    restart: unless-stopped
+    expose:
+      - "8000"  # Internal port only; Cloudflare tunnel handles external access
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .env:/app/.env:ro
+      - price-checker-tmp:/tmp
+      - price-checker-data:/app/data
+      - price-checker-screenshots:/app/screenshots
+      - price-checker-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - price-checker-isolated
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: price-checker-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - price-checker
+    profiles:
+      - production
+    networks:
+      - price-checker-isolated
+
+  price-checker-dev:
+    build: .
+    container_name: price-checker-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      - .env:/app/.env:ro
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./screenshots:/app/screenshots
+      - ./uploads:/app/uploads
+      - ./requirements.txt:/app/requirements.txt:ro
+    command: python -m uvicorn src.web_app:app --host 0.0.0.0 --port 8000 --reload
+    profiles:
+      - development
+    networks:
+      - price-checker-isolated
+
+networks:
+  price-checker-isolated:
+    name: price-checker-isolated-network
+    driver: bridge
+    internal: false  # Allow internet access for cloudflared
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.26.0.0/24
+
+volumes:
+  price-checker-tmp:
+    name: price-checker-temp-storage
+    driver: local
+  price-checker-data:
+    name: price-checker-data-storage
+    driver: local
+  price-checker-screenshots:
+    name: price-checker-screenshots-storage
+    driver: local
+  price-checker-uploads:
+    name: price-checker-uploads-storage
+    driver: local 

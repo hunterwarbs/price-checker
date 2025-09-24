@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  price-checker:
+    # Override for development - mounts source code for hot reloading
+    volumes:
+      - .env:/app/.env:ro
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./screenshots:/app/screenshots
+      - ./requirements.txt:/app/requirements.txt:ro
+    # Enable development mode
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DEVELOPMENT=true
+    # Override command for development with auto-reload
+    command: python -m uvicorn src.web_app:app --host 0.0.0.0 --port 8000 --reload

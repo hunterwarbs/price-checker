@@ -1,0 +1,10 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting playwright-stealth
+  Downloading playwright_stealth-2.0.0-py3-none-any.whl.metadata (4.0 kB)
+Requirement already satisfied: playwright<2.0.0,>=1.0.0 in /home/hunterwarburton/.local/lib/python3.13/site-packages (from playwright-stealth) (1.52.0)
+Requirement already satisfied: pyee<14,>=13 in /home/hunterwarburton/.local/lib/python3.13/site-packages (from playwright<2.0.0,>=1.0.0->playwright-stealth) (13.0.0)
+Requirement already satisfied: greenlet<4.0.0,>=3.1.1 in /home/hunterwarburton/.local/lib/python3.13/site-packages (from playwright<2.0.0,>=1.0.0->playwright-stealth) (3.2.3)
+Requirement already satisfied: typing-extensions in /home/hunterwarburton/.local/lib/python3.13/site-packages (from pyee<14,>=13->playwright<2.0.0,>=1.0.0->playwright-stealth) (4.12.2)
+Downloading playwright_stealth-2.0.0-py3-none-any.whl (32 kB)
+Installing collected packages: playwright-stealth
+Successfully installed playwright-stealth-2.0.0
