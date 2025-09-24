@@ -37,11 +37,13 @@ TEMPERATURE = 0.7  # Controls randomness in LLM responses (0.0 = deterministic, 
 GOOGLE_SEARCH_LIMIT = 10  # Google search results limit for LLM tools
 
 # LLM Search Configuration
-MAX_TOOL_CALLS_PER_ITEM = 5  # Maximum number of tool calls before stopping search for an item
+# Cap tool calls to keep the agent focused and reduce redundant screenshots
+MAX_TOOL_CALLS_PER_ITEM = int(os.getenv("MAX_TOOL_CALLS_PER_ITEM", "2"))
 
 # Worker Pool Configuration
-MAX_WORKER_POOL_SIZE = 3  # Maximum number of concurrent workers for processing items
-DEFAULT_WORKER_POOL_SIZE = min(int(os.getenv("WORKER_POOL_SIZE", "5")), MAX_WORKER_POOL_SIZE)  # Configurable via environment variable
+# Allow higher concurrency; cap via MAX to avoid oversubscription
+MAX_WORKER_POOL_SIZE = int(os.getenv("MAX_WORKER_POOL_SIZE", "8"))
+DEFAULT_WORKER_POOL_SIZE = min(int(os.getenv("WORKER_POOL_SIZE", "6")), MAX_WORKER_POOL_SIZE)
 
 # Rate Limiting Configuration
 OPENROUTER_MAX_REQUESTS_PER_MINUTE = int(os.getenv("OPENROUTER_MAX_REQUESTS_PER_MINUTE", "200"))  # OpenRouter concurrent requests limit
