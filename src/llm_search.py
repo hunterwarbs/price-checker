@@ -26,6 +26,11 @@ logger = logging.getLogger(__name__)
 
 # Old rate limiters removed - now using smart adaptive rate limiter
 
+def _assistant_message_dict(message_obj: Any) -> Dict[str, Any]:
+    """Return a sanitized assistant message with only role and content."""
+    content = getattr(message_obj, "content", None)
+    return {"role": "assistant", "content": content or ""}
+
 class LLMSearchAgent:
     def __init__(self):
         # Initialize Fireworks (OpenAI-compatible) client
@@ -304,7 +309,7 @@ class LLMSearchAgent:
                 response = await global_rate_manager.execute_openrouter_request(fireworks_request)
                 
                 message = response.choices[0].message
-                messages.append(message.model_dump())
+                messages.append(_assistant_message_dict(message))
                 
                 tool_call_count = 0
                 while message.tool_calls and tool_call_count < MAX_TOOL_CALLS_PER_ITEM:
@@ -335,7 +340,7 @@ class LLMSearchAgent:
                         )
                     response = await global_rate_manager.execute_openrouter_request(followup_fireworks_request)
                     message = response.choices[0].message
-                    messages.append(message.model_dump())
+                    messages.append(_assistant_message_dict(message))
                 
                 final_response = message.content
                 if final_response:
@@ -408,7 +413,7 @@ class LLMSearchAgent:
                 )
                 
                 message = response.choices[0].message
-                messages.append(message.model_dump())
+                messages.append(_assistant_message_dict(message))
                 
                 tool_call_count = 0
                 while message.tool_calls and tool_call_count < MAX_TOOL_CALLS_PER_ITEM:
@@ -445,7 +450,7 @@ class LLMSearchAgent:
                         temperature=TEMPERATURE
                     )
                     message = response.choices[0].message
-                    messages.append(message.model_dump())
+                    messages.append(_assistant_message_dict(message))
                 
                 final_response = message.content
                 if final_response:
