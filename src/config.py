@@ -6,6 +6,11 @@ load_dotenv()
 # API Keys
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# Fireworks AI (Vision OCR)
+FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
+FIREWORKS_BASE_URL = os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1")
+FIREWORKS_VL_MODEL = os.getenv("FIREWORKS_VL_MODEL", "accounts/fireworks/models/qwen2p5-vl-32b-instruct")
+
 # Proxy Configuration
 OXYLABS_PROXY = os.getenv("OXYLABS_PROXY")  # Expected format: "username:password"
 OXYLABS_PROXY_SERVER = "pr.oxylabs.io:7777"
@@ -118,12 +123,7 @@ You must respond with a JSON object in this exact format:
   "url": "https://example.com/product-page",
   "price": "$299.99"
 }
-
-If you absolutely cannot find any reasonable match after extensive searching, respond with:
-{
-  "url": "NOT_FOUND",
-  "price": ""
-}"""
+"""
 
 SEARCH_USER_PROMPT_TEMPLATE = """Find the best retail product page for this item and extract the current price:
 

@@ -9,7 +9,7 @@ An intelligent system that reads product information from Excel spreadsheets and
 - **AI-Powered Search**: Uses OpenRouter LLMs with Oxylabs search tooling to find the best matching retail product pages
 - **Intelligent Verification**: LLM analyzes search results and page content to confirm correct product matches
 - **Automated Screenshots**: Uses Playwright to capture full-page screenshots of product pages
-- **Data Extraction**: Automatically extracts product titles, prices, and main product images from web pages
+- **Data Extraction**: Uses Fireworks AI Qwen2.5-VL for OCR on screenshots to extract text (prices, titles)
 - **Excel Integration**: Reads from and writes to Excel files with all collected data
 
 ## Architecture
@@ -17,9 +17,9 @@ An intelligent system that reads product information from Excel spreadsheets and
 The system consists of several key components:
 
 1. **Spreadsheet I/O** (`src/spreadsheet_io.py`) - Handles reading and writing Excel files
-2. **LLM Search Agent** (`src/llm_search.py`) - Integrates OpenRouter and Exa AI for intelligent product search
+2. **LLM Search Agent** (`src/llm_search.py`) - Integrates OpenRouter and Oxylabs search for intelligent product search
 3. **Screenshot Capture** (`src/screenshotter.py`) - Uses Playwright for web page capture and data extraction
-4. **Product Matcher** (`src/matcher.py`) - Orchestrates the search and capture pipeline
+4. **OCR** (`src/ocr_analyzer.py`) - Fireworks AI Qwen2.5-VL-based OCR service
 5. **Main CLI** (`src/main.py`) - Command-line interface for the entire system
 
 ## Setup
@@ -48,6 +48,9 @@ Edit `.env` and add the required values:
 
 ```
 OPENROUTER_API_KEY=sk-or-your-actual-api-key-here
+FIREWORKS_API_KEY=your-fireworks-api-key
+FIREWORKS_BASE_URL=https://api.fireworks.ai/inference/v1
+FIREWORKS_VL_MODEL=accounts/fireworks/models/qwen2p5-vl-32b-instruct
 OXYLABS_WEB_API=your-web-api-username:your-web-api-password
 OXYLABS_PROXY=your-proxy-username:your-proxy-password
 ```
@@ -61,6 +64,7 @@ CLOUDFLARE_TUNNEL_TOKEN=your-tunnel-token-here
 **Getting API Keys:**
 
 - **OpenRouter**: Sign up at [openrouter.ai](https://openrouter.ai/) and create an API key
+- **Fireworks AI**: Sign up at [fireworks.ai](https://fireworks.ai/) and create an API key
 - **Oxylabs Web API**: Sign up for the Oxylabs SERP API and create credentials (username/password format)
 - **Oxylabs Proxy**: Generate proxy credentials in your Oxylabs dashboard
 
@@ -144,11 +148,8 @@ The system generates:
 
 ### 3. Screenshot and Data Extraction
 - Uses Playwright to visit each found URL
-- Captures full-page screenshots
-- Extracts product data using multiple strategies:
-  - CSS selectors for common e-commerce patterns
-  - Text analysis for price detection
-  - Image analysis for main product photos
+- Captures top-of-page screenshots
+- Sends screenshots to Fireworks Qwen2.5-VL OCR to extract visible text and pricing
 
 ### 4. Results Compilation
 - Combines all collected data into the output Excel file
@@ -159,7 +160,7 @@ The system generates:
 Key settings can be modified in `src/config.py`:
 
 - **Model Selection**: Change the OpenRouter model used
-- **Search Parameters**: Adjust Oxylabs search limits and content length
+- **OCR Model**: Configure Fireworks base URL and VLM model
 - **Screenshot Settings**: Modify viewport size and timeout values
 - **File Paths**: Customize input/output locations
 
@@ -170,7 +171,7 @@ The system includes robust error handling:
 - **API Failures**: Automatic retries with exponential backoff
 - **Network Issues**: Graceful handling of timeouts and connection errors
 - **Invalid URLs**: Continues processing even if some URLs fail
-- **Data Extraction**: Multiple fallback strategies for extracting product information
+- **Data Extraction**: Vision OCR via Fireworks with basic normalization
 
 ## Logging
 

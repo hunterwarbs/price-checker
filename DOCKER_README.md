@@ -7,6 +7,7 @@ This project mirrors the deployment approach used in `pdf-auditor`: a single Fas
 1. **Docker** and **Docker Compose v2**
 2. **Required credentials** in `.env`:
    - `OPENROUTER_API_KEY`
+   - `FIREWORKS_API_KEY` (for OCR via Qwen2.5-VL)
    - `OXYLABS_WEB_API`
    - `OXYLABS_PROXY`
    - `CLOUDFLARE_TUNNEL_TOKEN` (only when using the tunnel)
@@ -56,4 +57,4 @@ docker compose down
 - The `price-checker` service does **not** expose ports in production mode; all ingress flows through Cloudflare.
 - Persistent data directories (`data`, `screenshots`, `uploads`) are backed by named Docker volumes when running production profile.
 - A lightweight `/healthz` endpoint exists for the container health check.
-- The legacy Exa API integration has been removed; use Oxylabs Web API credentials instead. 
+- OCR is handled by Fireworks AI’s Qwen2.5-VL model; no local Tesseract/EasyOCR needed. 
